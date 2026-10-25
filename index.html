@@ -7,8 +7,15 @@
 <meta name="description" content="Dev.Cop یک پنل کامل مدیریت پروکسی VLESS و Trojan است که روی Cloudflare Workers و دیتابیس D1 اجرا می‌شود. بدون VPS، ۱۰۰٪ رایگان، بدون نصب — با ربات تلگرام در چند دقیقه پنل خودت را بساز.">
 <meta name="keywords" content="DevCop, Cloudflare Workers, VLESS, Trojan, پروکسی کلودفلر, پنل بدون سرور, D1 Database, ضد فیلتر, فرگمنت">
 <meta name="author" content="Dev.Cop Team">
-<meta name="theme-color" content="#030712">
+<meta name="theme-color" id="themeColorMeta" content="#030712">
 <meta name="color-scheme" content="dark light">
+<script>
+/* Theme before first paint, matching the visitor's system by default:
+   a saved manual choice wins, otherwise prefers-color-scheme decides. */
+(function(){var t=null;try{t=localStorage.getItem("devcop-theme");}catch(e){}
+if(t!=="dark"&&t!=="light"){t=(window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";}
+document.documentElement.setAttribute("data-theme",t);})();
+</script>
 <link rel="canonical" href="https://rezafkh.github.io/devcop-landing/">
 
 <!-- ─── Open Graph / Facebook / Telegram ─────────────────────────── -->
@@ -118,8 +125,14 @@
   --surface-3: #1a2f52;
   --text: #f8fafc;
   --text-muted: #94a3b8;
-  --text-subtle: #64748b;
-  --text-disabled: #475569;
+  --text-subtle: #8195ad;
+  --text-disabled: #8496ae;
+  --accent-cyan: #00f0ff;
+  --accent-lime: #4dff2e;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+  /* Hero-canvas ink as raw RGB so it can follow the theme. */
+  --canvas-node: 0, 240, 255;
+  --canvas-link: 0, 153, 255;
   --border: rgba(255, 255, 255, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.04);
   --border-strong: rgba(255, 255, 255, 0.18);
@@ -166,7 +179,13 @@ html[data-theme="light"] {
   --text: #090d16;
   --text-muted: #475569;
   --text-subtle: #64748b;
-  --text-disabled: #94a3b8;
+  --text-disabled: #5f738c;
+  --accent-cyan: #0369a1;
+  --accent-lime: #15803d;
+  --danger-text: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.10);
+  --canvas-node: 0, 88, 212;
+  --canvas-link: 0, 88, 212;
   --border: rgba(15, 23, 42, 0.09);
   --border-subtle: rgba(15, 23, 42, 0.05);
   --border-strong: rgba(15, 23, 42, 0.18);
@@ -381,10 +400,21 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 }
 @keyframes ripple-out { to { transform: scale(3.5); opacity: 0; } }
 
+.skip-link {
+  position: fixed; top: -100px; inset-inline-start: 16px; z-index: 1000;
+  padding: 10px 18px; border-radius: var(--radius-pill);
+  background: var(--accent); color: #fff; font-weight: 700;
+  transition: top var(--dur-fast) var(--ease-standard);
+}
+.skip-link:focus-visible { top: 14px; }
+
 /* ── Custom Cyber Cursor ────────────────────────────────────────── */
+/* The native cursor is hidden ONLY after the custom-cursor script has
+   initialised (html.cursor-live). If JS is blocked or fails, visitors keep
+   their own cursor exactly as the OS renders it. */
 @media (hover: hover) and (pointer: fine) {
-  body { cursor: none; }
-  a, button, input, select, textarea, [role="button"], .faq__q, .tab-btn, .chip, .icon-btn, .cmd-badge-btn, .panel-tab-btn, .float-dock__btn, .float-dock__top-btn, .faq-chip, .chip-btn {
+  html.cursor-live body { cursor: none; }
+  html.cursor-live a, html.cursor-live button, html.cursor-live input, html.cursor-live select, html.cursor-live textarea, html.cursor-live [role="button"], html.cursor-live .faq__q, html.cursor-live .tab-btn, html.cursor-live .chip, html.cursor-live .icon-btn, html.cursor-live .cmd-badge-btn, html.cursor-live .panel-tab-btn, html.cursor-live .float-dock__btn, html.cursor-live .float-dock__top-btn, html.cursor-live .faq-chip, html.cursor-live .chip-btn {
     cursor: none;
   }
   .custom-cursor {
@@ -541,10 +571,10 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   position: fixed; inset: 0; z-index: 120;
   background: var(--overlay); backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--dur-base) var(--ease-standard);
+  opacity: 0; pointer-events: none; visibility: hidden;
+  transition: opacity var(--dur-base) var(--ease-standard), visibility 0s linear var(--dur-base);
 }
-.mobile-sheet.open { opacity: 1; pointer-events: auto; }
+.mobile-sheet.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity var(--dur-base) var(--ease-standard); }
 .mobile-sheet__body {
   position: absolute; top: 0; left: 0; right: auto; bottom: 0; width: min(88vw, 340px);
   background: var(--glass-elevated); backdrop-filter: blur(28px) saturate(180%);
@@ -552,6 +582,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   border-right: 1px solid var(--border-strong);
   border-left: none;
   padding: var(--space-6) var(--space-5);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
   display: flex; flex-direction: column; gap: var(--space-4);
   transform: translateX(-100%); transition: transform var(--dur-slow) var(--ease-spring);
 }
@@ -569,15 +600,16 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   position: fixed; inset: 0; z-index: 200;
   background: var(--overlay); backdrop-filter: blur(12px);
   display: grid; place-items: center; padding: var(--space-5);
-  opacity: 0; pointer-events: none;
-  transition: opacity var(--dur-fast) var(--ease-standard);
+  opacity: 0; pointer-events: none; visibility: hidden;
+  transition: opacity var(--dur-fast) var(--ease-standard), visibility 0s linear var(--dur-fast);
 }
-.cmd-modal.open { opacity: 1; pointer-events: auto; }
+.cmd-modal.open { opacity: 1; pointer-events: auto; visibility: visible; transition: opacity var(--dur-fast) var(--ease-standard); }
 .cmd-modal__card {
   width: 100%; max-width: 580px; border-radius: var(--radius-lg);
   background: var(--surface-1); border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-lg), var(--shadow-glow);
   overflow: hidden; transform: scale(0.96) translateY(-10px);
+  max-height: calc(100dvh - 48px); display: flex; flex-direction: column;
   transition: transform var(--dur-base) var(--ease-spring);
 }
 .cmd-modal.open .cmd-modal__card { transform: scale(1) translateY(0); }
@@ -590,7 +622,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   width: 100%; background: none; border: 0; outline: none;
   font-size: 1.05rem; font-weight: 600; color: var(--text);
 }
-.cmd-modal__list { max-height: 360px; overflow-y: auto; padding: 10px; display: grid; gap: 4px; }
+.cmd-modal__list { max-height: 360px; min-height: 0; overflow-y: auto; padding: 10px; display: grid; gap: 4px; }
 .cmd-modal__item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px; border-radius: var(--radius-md);
@@ -642,6 +674,8 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 }
 @keyframes word-in { to { opacity: 1; transform: translateY(0); } }
 
+.one-line { white-space: nowrap; }
+@media (max-width: 1024px) { .one-line { white-space: normal; } }
 .hero__sub { margin-top: var(--space-5); font-size: 1.08rem; line-height: 2.15; color: var(--text-muted); max-width: 40em; }
 .hero__cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-6); }
 .hero__trust {
@@ -691,10 +725,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
           drop-shadow(0 0 55px rgba(0, 240, 255, 0.25));
   transition: filter var(--dur-base) var(--ease-standard);
 }
-[data-theme="dark"] .hero__logo-img--dark { display: block; }
-[data-theme="dark"] .hero__logo-img--light { display: none; }
-[data-theme="light"] .hero__logo-img--dark { display: none; }
-[data-theme="light"] .hero__logo-img--light { display: block; }
+.hero__image-wrap picture { display: contents; }
 [data-theme="light"] .hero__logo-img {
   filter: drop-shadow(0 16px 36px rgba(0, 98, 255, 0.2))
           drop-shadow(0 0 40px rgba(0, 153, 255, 0.15));
@@ -728,7 +759,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
 /* ── Key Metrics & Stats Section ────────────────────────────────── */
 .stats { border-block: 1px solid var(--border); background: var(--bg-soft); }
-.stats__grid { display: grid; grid-template-columns: repeat(5, 1fr); }
+.stats__grid { display: grid; grid-template-columns: repeat(4, 1fr); }
 .stat {
   padding: var(--space-6) var(--space-4); text-align: center;
   border-inline-end: 1px solid var(--border-subtle);
@@ -753,6 +784,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   border: 1px solid var(--border-strong);
   display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
   gap: var(--space-4); box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-7);
 }
 .savings-box__text h4 { font-size: 1.05rem; font-weight: 700; }
 .savings-box__text p { font-size: 0.9rem; color: var(--text-muted); }
@@ -791,6 +823,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   width: min(100%, 360px); margin-inline: auto;
 }
 .panel-mockup__url svg { width: 14px; height: 14px; color: var(--success); }
+.panel-mockup__url span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .panel-tabs-bar {
   display: flex; gap: var(--space-2); padding: 10px 18px;
@@ -842,48 +875,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 }
 .badge-pill--ok { background: var(--success-soft); color: var(--success-text); }
 .badge-pill--warn { background: var(--warning-soft); color: var(--warning-text); }
-
-/* ── Config & Client Simulator Playground ───────────────────────── */
-.config-playground {
-  max-width: 860px; margin-inline: auto;
-  border-radius: var(--radius-xl); border: 1px solid var(--border-strong);
-  background: var(--surface-1); padding: var(--space-6);
-  box-shadow: var(--shadow-lg);
-}
-.selector-group { margin-bottom: var(--space-5); }
-.selector-label { display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; }
-.chip-group { display: flex; flex-wrap: wrap; gap: 10px; }
-.chip-btn {
-  padding: 9px 18px; border-radius: var(--radius-pill);
-  background: var(--surface-2); border: 1px solid var(--border);
-  font-size: 0.88rem; font-weight: 600; cursor: pointer;
-  transition: all var(--dur-fast);
-}
-.chip-btn:hover { border-color: var(--accent); color: var(--text); }
-.chip-btn.active {
-  background: var(--brand-gradient); color: #030a1c;
-  border-color: transparent; font-weight: 800;
-  box-shadow: 0 4px 18px -4px rgba(0, 153, 255, 0.7);
-}
-
-.config-preview-box {
-  display: grid; grid-template-columns: 140px 1fr; gap: var(--space-5);
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius-lg); padding: var(--space-5); align-items: center;
-}
-.qr-container {
-  width: 130px; height: 130px; border-radius: var(--radius-md);
-  background: #ffffff; padding: 8px; display: grid; place-items: center;
-  box-shadow: var(--shadow-sm);
-}
-.qr-container svg { width: 100%; height: 100%; }
-.config-info { display: grid; gap: 10px; }
-.config-code {
-  font-family: var(--mono); font-size: 0.82rem; direction: ltr;
-  background: var(--surface-1); border: 1px solid var(--border-subtle);
-  padding: 10px 14px; border-radius: var(--radius-sm); color: var(--code-fg);
-  word-break: break-all; max-height: 70px; overflow-y: auto;
-}
+.badge-pill--off { background: var(--danger-soft); color: var(--danger-text); }
 
 /* ── Interactive Telegram Bot Simulator ─────────────────────────── */
 .chat {
@@ -1140,7 +1132,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 .faq-search-input {
   width: 100%; padding: 14px 20px; border-radius: var(--radius-pill);
   background: var(--surface-1); border: 1px solid var(--border-strong);
-  font-size: 0.96rem; color: var(--text); box-shadow: var(--shadow-sm);
+  font-size: 1rem; color: var(--text); box-shadow: var(--shadow-sm);
   outline: none; transition: border-color var(--dur-fast);
 }
 .faq-search-input:focus { border-color: var(--accent); }
@@ -1273,9 +1265,8 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   .hero__cta { justify-content: center; }
   .hero__trust { margin-inline: auto; text-align: start; }
   .hero__canvas { inset-inline: 0; width: 100%; opacity: 0.55; }
-  .stats__grid { grid-template-columns: repeat(3, 1fr); }
+  .stats__grid { grid-template-columns: repeat(2, 1fr); }
   .panel-stats-row { grid-template-columns: repeat(2, 1fr); }
-  .config-preview-box { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   .nav__links { display: none; }
   .nav__toggle { display: grid; }
 }
@@ -1314,7 +1305,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   .hero__visual-container { min-height: 310px; margin-bottom: 0; }
   .hero__card-3d { max-width: 320px; }
   .hero__logo-img { max-width: 270px; width: 75%; }
-  .float-tag { font-size: 0.72rem; padding: 5px 11px; }
+  .float-tag { font-size: 0.76rem; padding: 6px 12px; }
   .float-tag--top { top: 4%; inset-inline-start: 2%; }
   .float-tag--right { bottom: 8%; inset-inline-end: 2%; }
   .float-tag--bottom { display: none; }
@@ -1337,20 +1328,13 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   .panel-mockup__header { padding: 10px 14px; gap: 8px; }
   .panel-mockup__url { font-size: 0.72rem; padding: 4px 10px; max-width: 210px; }
   .panel-tabs-bar { padding: 8px 10px; gap: 6px; }
-  .panel-tab-btn { font-size: 0.8rem; padding: 6px 12px; }
+  .panel-tab-btn { font-size: 0.84rem; padding: 10px 14px; }
+  .panel-stat-box small { font-size: 0.8rem; }
   .panel-content { padding: var(--space-4); min-height: auto; }
   .panel-stats-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .panel-chart-svg { height: 95px; }
 
   /* Config Playground Mobile */
-  .config-playground { padding: var(--space-5) var(--space-4); border-radius: var(--radius-lg); }
-  .chip-group { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .chip-btn { padding: 8px 10px; font-size: 0.82rem; text-align: center; justify-content: center; }
-  .config-preview-box { padding: var(--space-4); gap: var(--space-4); }
-  .qr-container { width: 110px; height: 110px; }
-  .config-info { width: 100%; }
-  .config-info > div:last-child { flex-direction: column; width: 100%; }
-  .config-info .btn { width: 100%; justify-content: center; }
 
   /* Telegram Bot Chat Mobile */
   .chat { border-radius: var(--radius-lg); }
@@ -1369,8 +1353,9 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   }
 
   /* FAQ Mobile */
-  .faq-search-input { padding: 12px 18px; font-size: 0.9rem; }
+  .faq-search-input { padding: 12px 18px; font-size: 1rem; }
   .faq__q { padding: 14px 16px; font-size: 0.94rem; }
+  .faq-chip { padding: 10px 16px; font-size: 0.85rem; }
   .faq__a p { padding: 0 16px 16px; font-size: 0.9rem; }
 
   /* CTA Banner Mobile */
@@ -1389,7 +1374,13 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   }
   .float-dock__btn { flex: 1; justify-content: center; }
 
+  /* Floating dock is a bottom bar on phones: keep toasts above it and give
+     the footer enough room that its last line is never covered. */
+  .toast-container { inset-block-end: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .toast { text-align: center; line-height: 1.7; }
+
   /* Footer Mobile */
+  .footer { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); }
   .footer__inner { flex-direction: column; text-align: center; gap: var(--space-4); }
   .footer__brand { justify-content: center; }
   .footer__links { justify-content: center; gap: var(--space-4); }
@@ -1398,7 +1389,6 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 @media (max-width: 440px) {
   .hero__trust { grid-template-columns: 1fr; }
   .stats__grid { grid-template-columns: 1fr; }
-  .chip-group { grid-template-columns: 1fr; }
   .panel-stats-row { grid-template-columns: 1fr; }
   .hero__logo-img { max-width: 230px; }
   .hero__card-3d { max-width: 280px; }
@@ -1439,7 +1429,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
 <!-- Skip to Main Content Link -->
-<a href="#main" style="position:absolute;inset-inline-start:-9999px;top:0;padding:8px;background:var(--accent);color:#000;z-index:999">پرش به محتوای اصلی</a>
+<a href="#main" class="skip-link">پرش به محتوای اصلی</a>
 
 <!-- ══════════ NAVIGATION ══════════ -->
 <header class="nav" id="nav">
@@ -1452,7 +1442,6 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
     <nav class="nav__links" aria-label="ناوبری اصلی">
       <a href="#features">امکانات</a>
       <a href="#panelPreview">پیش‌نمایش پنل</a>
-      <a href="#playground">تست کلاینت</a>
       <a href="#botPlayground">ربات تلگرام</a>
       <a href="#tech">معماری</a>
       <a href="#compare">مقایسه</a>
@@ -1482,7 +1471,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 </header>
 
 <!-- ══════════ MOBILE SHEET ══════════ -->
-<div class="mobile-sheet" id="mobileSheet" aria-hidden="true">
+<div class="mobile-sheet" id="mobileSheet" aria-hidden="true" inert>
   <div class="mobile-sheet__body">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="display:flex;align-items:center;gap:10px">
@@ -1496,7 +1485,6 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
     <div class="mobile-sheet__links">
       <a href="#features">امکانات و مزایا <span>←</span></a>
       <a href="#panelPreview">ماک‌آپ زنده پنل <span>←</span></a>
-      <a href="#playground">آزمایشگاه کلاینت <span>←</span></a>
       <a href="#botPlayground">شبیه‌ساز ربات تلگرام <span>←</span></a>
       <a href="#tech">معماری و پروتکل‌ها <span>←</span></a>
       <a href="#compare">مقایسه با VPS <span>←</span></a>
@@ -1515,7 +1503,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 </div>
 
 <!-- ══════════ COMMAND PALETTE (CTRL+K) ══════════ -->
-<div class="cmd-modal" id="cmdModal" role="dialog" aria-modal="true" aria-label="جعبه فرمان سریع">
+<div class="cmd-modal" id="cmdModal" role="dialog" aria-modal="true" aria-label="جعبه فرمان سریع" inert>
   <div class="cmd-modal__card">
     <div class="cmd-modal__head">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
@@ -1526,7 +1514,6 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
       <div class="cmd-modal__item" data-action="copy-bot"><span>📋 کپی آیدی ربات تلگرام (@dev_cop_panel_bot)</span><kbd>Copy</kbd></div>
       <div class="cmd-modal__item" data-action="theme"><span>🌓 تغییر تم روشن / تاریک</span><kbd>T</kbd></div>
       <div class="cmd-modal__item" data-action="goto-panel"><span>📊 پرش به ماک‌آپ پنل وب</span><kbd>P</kbd></div>
-      <div class="cmd-modal__item" data-action="goto-playground"><span>🧪 پرش به آزمایشگاه کلاینت و کانفیگ</span><kbd>C</kbd></div>
       <div class="cmd-modal__item" data-action="goto-compare"><span>⚖️ مقایسه سرورلس کلودفلر در برابر VPS</span><kbd>V</kbd></div>
       <div class="cmd-modal__item" data-action="goto-faq"><span>❓ سوالات متداول و رفع ابهام</span><kbd>F</kbd></div>
     </div>
@@ -1551,8 +1538,8 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
       <p class="hero__sub" data-reveal style="--d:120ms">
         Dev.Cop یک پنل کامل مدیریت کاربر، سهمیه‌بندی و اشتراک است که بدون نیاز به سرور و پرداخت هزینه لایسنس،
-        روی زیرساخت لبه‌ی <b style="color:var(--text)">Cloudflare</b> اجرا می‌شود.
-        یک گفت‌وگوی ۲ دقیقه‌ای با ربات تلگرام کافی است تا آدرس اختصاصی پنلت را تحویل بگیری.
+        روی زیرساخت لبه‌ی <b style="color:var(--text)">Cloudflare</b> اجرا می‌شود.<br>
+        <span class="one-line">یک گفت‌وگوی کوتاه با بات تلگرام کافی است تا آدرس اختصاصی پنلت را تحویل بگیری.</span>
       </p>
 
       <div class="hero__cta" data-reveal style="--d:220ms">
@@ -1582,8 +1569,10 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
         <!-- The Official Hero Image Centerpiece (Dark & Light Theme) -->
         <div class="hero__image-wrap">
-          <img src="hero-dark-theme.png" alt="Dev.Cop Panel — لوگوی رسمی" class="hero__logo-img hero__logo-img--dark" width="380" height="380" fetchpriority="high" loading="eager">
-          <img src="hero-light-theme.png" alt="Dev.Cop Panel — لوگوی رسمی" class="hero__logo-img hero__logo-img--light" width="380" height="380" fetchpriority="high" loading="eager">
+          <picture>
+            <source srcset="hero-light-theme.png" media="(prefers-color-scheme: light)">
+            <img src="hero-dark-theme.png" alt="Dev.Cop Panel — لوگوی رسمی" class="hero__logo-img" width="380" height="380" fetchpriority="high" loading="eager" decoding="async">
+          </picture>
         </div>
 
         <!-- Floating Live Badges -->
@@ -1628,11 +1617,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
         <div class="stat__num" data-count="5">۰</div>
         <div class="stat__label">فرمت کلاینت و اشتراک</div>
       </div>
-      <div class="stat" data-reveal style="--d:320ms">
-        <div class="stat__icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
-        <div class="stat__num" data-count="7">۰</div>
-        <div class="stat__label">تب مدیریت در پنل وب</div>
-      </div>
+
     </div>
 
     <!-- Savings Interactive Widget -->
@@ -1736,18 +1721,18 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
               </thead>
               <tbody>
                 <tr>
-                  <td><b>علی محمدی</b></td>
+                  <td><b>AliMohammadi</b></td>
                   <td>۲۴.۲ گیگ از ۵۰ گیگ</td>
                   <td>۲۴ روز دیگر</td>
                   <td><span class="badge-pill badge-pill--ok">فعال</span></td>
-                  <td><button class="btn btn--ghost" style="padding:4px 10px;font-size:0.8rem" onclick="showToast('لینک اشتراک علی کپی شد!')">کپی لینک ساب</button></td>
+                  <td><button class="btn btn--ghost" style="padding:4px 10px;font-size:0.8rem" onclick="showToast('لینک اشتراک AliMohammadi کپی شد!')">کپی لینک ساب</button></td>
                 </tr>
                 <tr>
-                  <td><b>رضا فرخی</b></td>
+                  <td><b>Rez22</b></td>
                   <td>۶۸.۰ گیگ از ۸۰ گیگ</td>
                   <td>۱۲ روز دیگر</td>
                   <td><span class="badge-pill badge-pill--ok">فعال</span></td>
-                  <td><button class="btn btn--ghost" style="padding:4px 10px;font-size:0.8rem" onclick="showToast('لینک اشتراک رضا کپی شد!')">کپی لینک ساب</button></td>
+                  <td><button class="btn btn--ghost" style="padding:4px 10px;font-size:0.8rem" onclick="showToast('لینک اشتراک Rez22 کپی شد!')">کپی لینک ساب</button></td>
                 </tr>
                 <tr>
                   <td><b>کاربر تستی</b></td>
@@ -1792,76 +1777,10 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
             <div style="background:var(--surface-2);padding:16px;border-radius:var(--radius-md);border:1px solid var(--border)">
               <div style="display:flex;justify-content:space-between;margin-bottom:8px">
                 <b>استتار بسته (TLS Masking Preset)</b>
-                <span class="badge-pill badge-pill--ok">الگوی Patterniha فعال</span>
+                <span class="badge-pill badge-pill--off">الگوی Patterniha غیرفعال</span>
               </div>
               <p style="font-size:0.86rem;color:var(--text-muted)">شبیه‌سازی کامل رفتار مرورگر Chrome 124 برای جلوگیری از شناسایی عمقی بسته (DPI).</p>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════ LIVE SUBSCRIPTION & CONFIG PLAYGROUND ══════════ -->
-<section class="section section--tight" id="playground">
-  <div class="wrap">
-    <div class="section__head">
-      <span class="section__eyebrow" data-reveal>آزمایشگاه زنده</span>
-      <h2 class="section__title" data-reveal style="--d:60ms">کلاینت و اپراتور خودت را <em>انتخاب کن</em></h2>
-      <p class="section__sub" data-reveal style="--d:120ms">
-        تست زنده خروجی اشتراک پنل Dev.Cop متناسب با برنامه و اپراتور اینترنت شما.
-      </p>
-    </div>
-
-    <div class="config-playground spotlight-card" data-reveal>
-      <div class="selector-group">
-        <span class="selector-label">۱. کلاینت اتصال مورد نظر شما:</span>
-        <div class="chip-group" id="clientChips">
-          <button class="chip-btn active" data-client="v2rayng">v2rayNG (اندروید)</button>
-          <button class="chip-btn" data-client="hiddify">Hiddify (ویندوز/مک/موبایل)</button>
-          <button class="chip-btn" data-client="singbox">sing-box (مدرن)</button>
-          <button class="chip-btn" data-client="clash">Clash Meta</button>
-          <button class="chip-btn" data-client="streisand">Streisand (iOS)</button>
-        </div>
-      </div>
-
-      <div class="selector-group">
-        <span class="selector-label">۲. اپراتور اینترنت مقصد:</span>
-        <div class="chip-group" id="operatorChips">
-          <button class="chip-btn active" data-op="mci">همراه اول (MCI)</button>
-          <button class="chip-btn" data-op="mtn">ایرانسل (MTN)</button>
-          <button class="chip-btn" data-op="tci">مخابرات و ثابت</button>
-          <button class="chip-btn" data-op="rgt">رایتل</button>
-        </div>
-      </div>
-
-      <div class="config-preview-box">
-        <div class="qr-container" title="QR Code اشتراک">
-          <svg viewBox="0 0 100 100" fill="none">
-            <rect width="100" height="100" fill="#fff"/>
-            <rect x="10" y="10" width="24" height="24" rx="2" fill="#000"/><rect x="14" y="14" width="16" height="16" fill="#fff"/><rect x="18" y="18" width="8" height="8" fill="#000"/>
-            <rect x="66" y="10" width="24" height="24" rx="2" fill="#000"/><rect x="70" y="14" width="16" height="16" fill="#fff"/><rect x="74" y="18" width="8" height="8" fill="#000"/>
-            <rect x="10" y="66" width="24" height="24" rx="2" fill="#000"/><rect x="14" y="70" width="16" height="16" fill="#fff"/><rect x="18" y="74" width="8" height="8" fill="#000"/>
-            <rect x="42" y="12" width="6" height="12" fill="#000"/><rect x="52" y="20" width="8" height="6" fill="#000"/>
-            <rect x="40" y="40" width="20" height="20" rx="3" fill="#0062FF"/>
-            <rect x="12" y="44" width="8" height="8" fill="#000"/><rect x="28" y="44" width="6" height="12" fill="#000"/>
-            <rect x="68" y="46" width="18" height="6" fill="#000"/><rect x="74" y="56" width="12" height="8" fill="#000"/>
-            <rect x="42" y="70" width="14" height="8" fill="#000"/><rect x="62" y="74" width="10" height="12" fill="#000"/>
-          </svg>
-        </div>
-        <div class="config-info">
-          <div style="display:flex;align-items:center;justify-content:space-between">
-            <span style="font-weight:700;font-size:0.92rem" id="configHeadline">کانفیگ بهینه‌شده برای v2rayNG (همراه اول)</span>
-            <span class="badge-pill badge-pill--ok">تست‌شده و بدون قطعی</span>
-          </div>
-          <div class="config-code" id="configString">vless://7f9c81b2-4d5e-4a3b-9c12-3456789abcde@devcop-panel.workers.dev:443?encryption=none&security=tls&type=ws&host=devcop-panel.workers.dev&path=%2Fsub%2Fmci#DevCop-MCI-Clean</div>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn--primary" id="copyConfigBtn" style="padding:9px 18px;font-size:0.88rem">
-              <svg style="width:16px;height:16px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              کپی لینک کانفیگ
-            </button>
-            <button class="btn btn--ghost" id="copySubUrlBtn" style="padding:9px 18px;font-size:0.88rem">کپی لینک اشتراک چندکلاینته</button>
           </div>
         </div>
       </div>
@@ -2025,7 +1944,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
         <ul>
           <li>۱۰۰٪ سورس مستقل و بدون کد مخفی یا تله</li>
           <li>سازگار با بررسی سلامت کدهای کلودفلر <code>check:cf</code></li>
-          <li>مالکیت تام و کمال زیرساخت روی حساب شخصی خودتان</li>
+          <li>مالکیت تمام و کمال زیرساخت روی حساب شخصی خودتان</li>
         </ul>
       </article>
     </div>
@@ -2404,7 +2323,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
           عضویت در کانال اخبار و آموزش
         </a>
       </div>
-      <p class="cta__note">۱۰۰٪ متن‌باز و رایگان · پشتیبانی از پروتکل‌های نوین VLESS و Trojan · بدون لاگ</p>
+      <p class="cta__note">۱۰۰٪ رایگان · پشتیبانی از پروتکل‌های نوین VLESS و Trojan · بدون لاگ</p>
     </div>
   </div>
 </section>
@@ -2421,14 +2340,14 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
     <nav class="footer__links" aria-label="پیوندهای پایین صفحه">
       <a href="#features">امکانات</a>
       <a href="#panelPreview">پیش‌نمایش پنل</a>
-      <a href="#playground">کلاینت‌ها</a>
       <a href="#tech">معماری</a>
       <a href="#compare">مقایسه</a>
       <a href="#faq">سوالات متداول</a>
       <a href="#" data-telegram-channel>کانال تلگرام</a>
     </nav>
     <p class="footer__note">
-      Dev.Cop Panel یک پروژه‌ی کاملاً مستقل و متن‌باز است. این سامانه با هدف توسعه فناوری‌های دسترسی آزاد به اینترنت و بدون هرگونه وابستگی تجاری توسعه یافته است.
+      Dev.Cop Panel یک پروژه‌ی کاملاً مستقل و متن‌بسته است. این سامانه با هدف توسعه فناوری‌های دسترسی آزاد به اینترنت و بدون هرگونه وابستگی تجاری توسعه یافته است.
+      <span style="display:block;text-align:center;margin-top:6px">اهداف فعلی تحقیقاتی، پروژه محور و ابزاری هستند.</span>
     </p>
   </div>
 </footer>
@@ -2491,20 +2410,34 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   var themeBtn = $("#themeBtn"), themeIcon = $("#themeIcon");
   var SUN = '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>';
   var MOON = '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>';
-  function applyTheme(t) {
+  var themeColorMeta = document.getElementById("themeColorMeta");
+  function applyTheme(t, save) {
     document.documentElement.setAttribute("data-theme", t);
     if (themeIcon) themeIcon.innerHTML = (t === "dark") ? SUN : MOON;
-    try { localStorage.setItem("devcop-theme", t); } catch (e) {}
+    themeBtn.setAttribute("aria-label", t === "dark" ? "رفتن به تم روشن" : "رفتن به تم تاریک");
+    if (themeColorMeta) themeColorMeta.setAttribute("content", t === "dark" ? "#030712" : "#f8fafc");
+    if (save) { try { localStorage.setItem("devcop-theme", t); } catch (e) {} }
+    document.dispatchEvent(new CustomEvent("devcop:themechange"));
   }
-  var savedTheme = null;
-  try { savedTheme = localStorage.getItem("devcop-theme"); } catch (e) {}
-  applyTheme(savedTheme || "dark");
+  /* The <head> snippet already resolved saved-choice vs OS preference. */
+  applyTheme(document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark", false);
   if (themeBtn) {
     themeBtn.addEventListener("click", function () {
       var next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
-      applyTheme(next);
+      applyTheme(next, true);
       showToast(next === "dark" ? "تم تاریک فعال شد 🌙" : "تم روشن فعال شد ☀️");
     });
+  }
+  /* If the visitor never chose manually, follow live OS theme changes. */
+  if (window.matchMedia) {
+    var osTheme = window.matchMedia("(prefers-color-scheme: light)");
+    var onOsTheme = function (e) {
+      var manual = null;
+      try { manual = localStorage.getItem("devcop-theme"); } catch (err) {}
+      if (manual !== "dark" && manual !== "light") applyTheme(e.matches ? "light" : "dark", false);
+    };
+    if (osTheme.addEventListener) osTheme.addEventListener("change", onOsTheme);
+    else if (osTheme.addListener) osTheme.addListener(onOsTheme);
   }
 
   /* ── Sticky Floating Nav & Floating Dock ───────────────────────── */
@@ -2526,14 +2459,22 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
   /* ── Spotlight Mouse Cursor Tracking on Cards ─────────────────── */
   var spotlightCards = $$(".spotlight-card");
-  if (!isReduced()) {
+  if (!isReduced() && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+    var spotEvt = null, spotRaf = null;
     window.addEventListener("pointermove", function (e) {
-      spotlightCards.forEach(function (card) {
-        var rect = card.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        var y = e.clientY - rect.top;
-        card.style.setProperty("--mouse-x", x + "px");
-        card.style.setProperty("--mouse-y", y + "px");
+      spotEvt = e;
+      if (spotRaf) return;
+      spotRaf = requestAnimationFrame(function () {
+        spotRaf = null;
+        if (!spotEvt) return;
+        var ev = spotEvt;
+        spotlightCards.forEach(function (card) {
+          var rect = card.getBoundingClientRect();
+          /* Skip off-screen cards entirely: no layout reads wasted on them. */
+          if (rect.bottom < -80 || rect.top > window.innerHeight + 80) return;
+          card.style.setProperty("--mouse-x", (ev.clientX - rect.left) + "px");
+          card.style.setProperty("--mouse-y", (ev.clientY - rect.top) + "px");
+        });
       });
     }, { passive: true });
   }
@@ -2556,16 +2497,68 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
   /* ── Command Palette (Ctrl+K) ──────────────────────────────────── */
   var cmdModal = $("#cmdModal"), cmdOpenBtn = $("#cmdOpenBtn"), cmdInput = $("#cmdInput");
+  var lastCmdFocus = null;
   function openCmd() {
     if (!cmdModal) return;
+    lastCmdFocus = document.activeElement;
     cmdModal.classList.add("open");
+    cmdModal.removeAttribute("inert");
     cmdModal.setAttribute("aria-hidden", "false");
-    if (cmdInput) { cmdInput.value = ""; cmdInput.focus(); }
+    if (cmdInput) { cmdInput.value = ""; filterCmd(""); cmdInput.focus(); }
   }
   function closeCmd() {
     if (!cmdModal) return;
     cmdModal.classList.remove("open");
+    cmdModal.setAttribute("inert", "");
     cmdModal.setAttribute("aria-hidden", "true");
+    if (lastCmdFocus && lastCmdFocus.focus) lastCmdFocus.focus();
+  }
+  var cmdItems = $$("#cmdList .cmd-modal__item");
+  function visibleCmdItems() {
+    return cmdItems.filter(function (it) { return it.style.display !== "none"; });
+  }
+  function setActiveCmd(item) {
+    cmdItems.forEach(function (it) { it.classList.toggle("active", it === item); });
+    if (item) item.scrollIntoView({ block: "nearest" });
+  }
+  function filterCmd(query) {
+    var q = (query || "").trim().toLowerCase();
+    var first = null;
+    cmdItems.forEach(function (it) {
+      var hit = q === "" || it.textContent.toLowerCase().indexOf(q) > -1;
+      it.style.display = hit ? "" : "none";
+      if (hit && !first) first = it;
+    });
+    setActiveCmd(first);
+  }
+  function runCmdItem(item) {
+    if (!item) return;
+    item.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  }
+  if (cmdInput) {
+    cmdInput.addEventListener("input", function () { filterCmd(cmdInput.value); });
+    cmdInput.addEventListener("keydown", function (e) {
+      var vis = visibleCmdItems();
+      var idx = vis.findIndex(function (it) { return it.classList.contains("active"); });
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (!vis.length) return;
+        var next = e.key === "ArrowDown" ? Math.min(idx + 1, vis.length - 1) : Math.max(idx - 1, 0);
+        setActiveCmd(vis[next < 0 ? 0 : next]);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        runCmdItem(vis[idx] || vis[0]);
+      } else if (cmdInput.value === "" && /^[a-z]$/i.test(e.key)) {
+        /* Letter shortcuts (T/P/V/F…) work while the search box is empty. */
+        var map = { t: "theme", p: "goto-panel", v: "goto-compare", f: "goto-faq" };
+        var act = map[e.key.toLowerCase()];
+        if (act) {
+          e.preventDefault();
+          var target = cmdItems.find(function (it) { return it.getAttribute("data-action") === act; });
+          runCmdItem(target);
+        }
+      }
+    });
   }
   if (cmdOpenBtn) cmdOpenBtn.addEventListener("click", openCmd);
   window.addEventListener("keydown", function (e) {
@@ -2600,9 +2593,6 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
       else if (act === "goto-panel") {
         var el = $("#panelPreview"); if (el) el.scrollIntoView({ behavior: "smooth" });
       }
-      else if (act === "goto-playground") {
-        var el = $("#playground"); if (el) el.scrollIntoView({ behavior: "smooth" });
-      }
       else if (act === "goto-compare") {
         var el = $("#compare"); if (el) el.scrollIntoView({ behavior: "smooth" });
       }
@@ -2617,8 +2607,11 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
   function toggleMobile(open) {
     if (!mobileSheet) return;
     mobileSheet.classList.toggle("open", open);
+    if (open) { mobileSheet.removeAttribute("inert"); } else { mobileSheet.setAttribute("inert", ""); }
     mobileSheet.setAttribute("aria-hidden", String(!open));
     if (menuBtn) menuBtn.setAttribute("aria-expanded", String(open));
+    if (open && closeMobileMenu) closeMobileMenu.focus();
+    if (!open && menuBtn) menuBtn.focus();
   }
   if (menuBtn) menuBtn.addEventListener("click", function () { toggleMobile(true); });
   if (closeMobileMenu) closeMobileMenu.addEventListener("click", function () { toggleMobile(false); });
@@ -2717,60 +2710,11 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
     });
   });
 
-  /* ── Config & Client Simulator Playground ──────────────────────── */
-  var clientChips = $$("#clientChips .chip-btn");
-  var operatorChips = $$("#operatorChips .chip-btn");
-  var configHeadline = $("#configHeadline");
-  var configString = $("#configString");
-  var copyConfigBtn = $("#copyConfigBtn");
-  var copySubUrlBtn = $("#copySubUrlBtn");
-
-  var currentClient = "v2rayNG";
-  var currentOp = "همراه اول";
-
-  function updateConfigPreview() {
-    if (configHeadline) configHeadline.textContent = "کانفیگ بهینه‌شده برای " + currentClient + " (" + currentOp + ")";
-    var opKey = currentOp.indexOf("همراه") > -1 ? "mci" : (currentOp.indexOf("ایرانسل") > -1 ? "mtn" : "tci");
-    var sampleLink = "vless://7f9c81b2-4d5e-4a3b-9c12-3456789abcde@devcop-panel.workers.dev:443?encryption=none&security=tls&type=ws&host=devcop-panel.workers.dev&path=%2Fsub%2F" + opKey + "#DevCop-" + opKey.toUpperCase() + "-Clean";
-    if (configString) configString.textContent = sampleLink;
-  }
-
-  clientChips.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      clientChips.forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      currentClient = btn.textContent.split(" ")[0];
-      updateConfigPreview();
-    });
-  });
-
-  operatorChips.forEach(function (btn) {
-    btn.addEventListener("click", function () {
-      operatorChips.forEach(function (b) { b.classList.remove("active"); });
-      btn.classList.add("active");
-      currentOp = btn.textContent.split(" ")[0];
-      updateConfigPreview();
-    });
-  });
-
-  if (copyConfigBtn) {
-    copyConfigBtn.addEventListener("click", function () {
-      if (configString) navigator.clipboard.writeText(configString.textContent);
-      showToast("کانفیگ تست با موفقیت کپی شد! ✅");
-    });
-  }
-  if (copySubUrlBtn) {
-    copySubUrlBtn.addEventListener("click", function () {
-      navigator.clipboard.writeText("https://devcop-panel.workers.dev/sub/user_token_demo_987");
-      showToast("لینک اشتراک همه‌کاره کپی شد! ✅");
-    });
-  }
-
   /* ── Interactive Telegram Bot Chat Playground ───────────────────── */
   var chatBody = $("#chatBody");
   var botAnswers = {
     "🚀 ساخت پنل جدید": "عالیه! برای ساخت پنل روی حسابت، فقط کافیه توکن API کلودفلر رو با دسترسی Workers و D1 ارسال کنی تا در چند ثانیه منتشر بشه 🚀",
-    "👤 افزودن کاربر تستی": "کاربر علی با سهمیه ۵۰ گیگابایت و انقضای ۳۰ روزه با موفقیت در دیتابیس D1 ساخته شد! لینک اشتراک یک‌کلیکی صادر شد ✅",
+    "👤 افزودن کاربر تستی": "کاربر AliMohammadi با سهمیه ۵۰ گیگابایت و انقضای ۳۰ روزه با موفقیت در دیتابیس D1 ساخته شد! لینک اشتراک یک‌کلیکی صادر شد ✅",
     "📡 تست سلامت آی‌پی": "تست پینگ به پایان رسید: همراه اول (۲۱ms)، ایرانسل (۲۶ms) و مخابرات (۱۹ms) همگی آنلاین و بدون پکت‌لاس هستند ⚡",
     "🔄 وضعیت آپدیت Worker": "ورکر شما به آخرین نسخه هماهنگ با هسته رسمی Dev.Cop متصل است و پایگاه داده در سلامت کامل قرار دارد ✨"
   };
@@ -2848,6 +2792,14 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
 
     var nodes = [], w = 0, h = 0, dpr = 1, raf = null, visible = true;
     var LINK_DIST = 150, COUNT = 40;
+    var nodeRGB = "0,240,255", linkRGB = "0,153,255";
+    function readCanvasColors() {
+      var cs = window.getComputedStyle(document.documentElement);
+      nodeRGB = cs.getPropertyValue("--canvas-node").trim() || nodeRGB;
+      linkRGB = cs.getPropertyValue("--canvas-link").trim() || linkRGB;
+    }
+    readCanvasColors();
+    document.addEventListener("devcop:themechange", readCanvasColors);
 
     function resize() {
       var rect = canvas.getBoundingClientRect();
@@ -2886,7 +2838,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
           var dx = a.x - b.x, dy = a.y - b.y;
           var dist = Math.sqrt(dx * dx + dy * dy);
           if (dist < LINK_DIST) {
-            ctx.strokeStyle = "rgba(0, 153, 255, " + (0.18 * (1 - dist / LINK_DIST)).toFixed(3) + ")";
+            ctx.strokeStyle = "rgba(" + linkRGB + ", " + (0.18 * (1 - dist / LINK_DIST)).toFixed(3) + ")";
             ctx.lineWidth = 1;
             ctx.beginPath();
             ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
@@ -2898,7 +2850,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
       for (var k = 0; k < nodes.length; k++) {
         var n = nodes[k];
         var pulse = 0.5 + 0.5 * Math.sin(n.p);
-        ctx.fillStyle = "rgba(0, 240, 255, " + (0.4 + 0.5 * pulse).toFixed(3) + ")";
+        ctx.fillStyle = "rgba(" + nodeRGB + ", " + (0.4 + 0.5 * pulse).toFixed(3) + ")";
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r * (0.8 + 0.3 * pulse), 0, Math.PI * 2);
         ctx.fill();
@@ -2911,7 +2863,7 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
       resize();
       ctx.clearRect(0, 0, w, h);
       nodes.forEach(function (n) {
-        ctx.fillStyle = "rgba(0, 153, 255, 0.4)";
+        ctx.fillStyle = "rgba(" + linkRGB + ", 0.4)";
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
       });
     } else {
@@ -2957,6 +2909,10 @@ html[data-theme="light"] .bg__blob { opacity: 0.22; }
       return;
     }
     var cursor = $("#customCursor");
+    /* From this line on the custom cursor provably exists and runs, so the
+       stylesheet is allowed to hide the native one (html.cursor-live).
+       Without JS the class is never added and the OS cursor stays. */
+    document.documentElement.classList.add("cursor-live");
     var ring = $("#cursorRing");
     var dot = $("#cursorDot");
     if (!cursor || !ring || !dot) return;
